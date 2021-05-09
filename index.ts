@@ -271,11 +271,11 @@ const setupDiscordClient = () => {
   }
   console.log(token)
   // await getBeneficiaries()
-  // await getAppointmentSlots()
-  // await parseCenters()
-  // setInterval(async () => {
-  //   await getAppointmentSlots()
-  //   parseCenters()
-  // }, 5000)
+  await getAppointmentSlots()
+  await parseCenters()
+  setInterval(async () => {
+    await getAppointmentSlots()
+    parseCenters()
+  }, 5000)
   // await getRecaptcha()
 })()
