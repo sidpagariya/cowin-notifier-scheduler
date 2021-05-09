@@ -1,6 +1,8 @@
 # CoWIN Discord Notifier
 Discord Notifier for India's CoWIN 18+ covid vaccine appointments
 
+![demo-screenshot](cowin-screenshot.png "Demo Screenshot")
+
 
 ## Setup
 After cloning this repository, create a `.env` file in the repo with the following contents:
