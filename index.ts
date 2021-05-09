@@ -251,7 +251,7 @@ const setupDiscordClient = () => {
     }
   })
 
-  client.login(process.env.cowin_discord_token)
+  client.login(process.env.cowin_discord_bot_token)
 }
 
 ;(async () => {
