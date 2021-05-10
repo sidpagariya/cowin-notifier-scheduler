@@ -297,18 +297,18 @@ const parseCenters = async (bookingEnabled: boolean) => {
     await startPollingForSlots(bookingEnabled, true)
   }
 
-  if (channels.length > 0 && allOpenSessions.length > 0) {
+  if (channels.length > 0 && all18PlusOpenSessions.length > 0) {
     const embed = new MessageEmbed()
       .setTitle(
-        `**${allOpenSessions.reduce((tot, session) => {
+        `**${all18PlusOpenSessions.reduce((tot, session) => {
           return tot + session.available_capacity
         }, 0)} slots** from ` +
-          `*${allOpenSessions.length}* open 18+ sessions! - `
+          `*${all18PlusOpenSessions.length}* open 18+ sessions! - `
       )
       .setColor(0x4fff7e)
       .setDescription(
         '```' +
-          allOpenSessions
+          all18PlusOpenSessions
             .map((session) => {
               return `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address}`
             })
