@@ -7,6 +7,8 @@ import { Client, Intents, TextChannel, MessageEmbed } from 'discord.js'
 import terminalImage from 'terminal-image'
 import sharp from 'sharp'
 import dotenv from 'dotenv'
+import { readFileSync, writeFileSync } from 'fs'
+// import serverline from 'serverline'
 
 dotenv.config()
 
@@ -26,13 +28,28 @@ let headers = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_16_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.8.107.794 Safari/537.36',
 }
 
+let mainInterval: number = 0
+let inProgressScheduling: boolean = false
 let mobile = process.env.cowin_phone_number
-let txnId: string | null = null
-let token: string | null = null
-let beneficiaries: any = null
+let txnId: string | undefined = undefined
+let token: string | undefined = undefined
+let beneficiaries: any = undefined
 let centers: any[] = []
-let captcha: string | null = null
+let captcha: string | undefined = undefined
 let channels: TextChannel[] = []
+let prevEmbed: MessageEmbed | undefined = undefined
+let wl_vaccine_types: string[] | undefined =
+  process.env.cowin_whitelist_vaccine_types !== undefined
+    ? process.env.cowin_whitelist_vaccine_types.split(',')
+    : undefined
+let wl_center_ids: number[] | undefined =
+  process.env.cowin_whitelist_center_ids !== undefined
+    ? process.env.cowin_whitelist_center_ids.split(',').map((x) => +x)
+    : undefined
+let wl_beneficiaries: string[] | undefined =
+  process.env.cowin_whitelist_beneficiaries !== undefined
+    ? process.env.cowin_whitelist_beneficiaries.split(',')
+    : undefined
 
 const generateMobileOTP = async () => {
   txnId = (
@@ -66,6 +83,7 @@ const verifyOTP = async (otp: string) => {
       }
     )
   ).data.token
+  writeFileSync('token.txt', token ?? '')
 }
 
 const getBeneficiaries = async () => {
@@ -139,7 +157,35 @@ const getRecaptcha = async () => {
   }
 }
 
-const parseCenters = async () => {
+const scheduleAppointment = async (
+  center_id: number,
+  session_id: number,
+  beneficiaries: string[],
+  slot: string,
+  captcha: string,
+  dose: number = 1
+) => {
+  let data = (
+    await axios.post(
+      'https://cdn-api.co-vin.in/api/v2/appointment/schedule',
+      JSON.stringify({
+        center_id: center_id,
+        session_id: session_id,
+        beneficiaries: beneficiaries,
+        slot: slot,
+        captcha: captcha,
+        dose: dose,
+      }),
+      {
+        headers: { ...headers, authorization: `Bearer ${token}` },
+      }
+    )
+  ).data
+  console.log(data)
+}
+
+const parseCenters = async (bookingEnabled: boolean) => {
+  if (inProgressScheduling) return
   let allSessions: any[] = []
   let allOpenSessions: any[] = []
   let all18PlusOpenSessions: any[] = []
@@ -151,6 +197,7 @@ const parseCenters = async () => {
           name: center.name,
           block_name: center.block_name,
           address: center.address,
+          center_id: center.center_id,
         })
       })
     }
@@ -160,77 +207,126 @@ const parseCenters = async () => {
       allOpenSessions.push(session)
     }
   })
+
   console.log(
-    colors.bold.yellow('%d') +
-      ' open sessions! - ' +
-      colors.bold.yellow('%d slots'),
-    allOpenSessions.length,
+    colors.blue.underline(moment(new Date()).format('DD-MM-YYYY HH:mm:ss'))
+  )
+
+  console.log(
+    colors.bold.yellow('%d slots') +
+      ' from ' +
+      colors.bold.yellow('%d') +
+      ' open sessions!',
     allOpenSessions.reduce((tot, session) => {
       return tot + session.available_capacity
-    }, 0)
+    }, 0),
+    allOpenSessions.length
   )
   allOpenSessions.forEach((session) => {
     console.log(
       colors.dim(
-        `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address}`
+        `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address} (${session.center_id})`
       )
     )
   })
+
   all18PlusOpenSessions = allOpenSessions.filter(
     (session) => session.min_age_limit == 18
   )
   console.log(
-    colors.bold.green('%d') +
-      ' open 18+ sessions! - ' +
-      colors.bold.green('%d slots'),
-    all18PlusOpenSessions.length,
+    colors.bold.green('%d slots') +
+      ' from ' +
+      colors.bold.green('%d') +
+      ' open 18+ sessions!',
     all18PlusOpenSessions.reduce((tot, session) => {
       return tot + session.available_capacity
-    }, 0)
+    }, 0),
+    all18PlusOpenSessions.length
   )
   all18PlusOpenSessions.forEach((session) => {
     console.log(
-      `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address}`
+      `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address} (${session.center_id})`
     )
   })
+
   console.log()
-  if (channels.length > 0 && all18PlusOpenSessions.length > 0) {
+
+  if (bookingEnabled && all18PlusOpenSessions.length > 0) {
+    inProgressScheduling = true
+    all18PlusOpenSessions.every(async (session: any) => {
+      if (
+        (wl_center_ids !== undefined &&
+          wl_center_ids.indexOf(session.center_id) !== -1) ||
+        wl_center_ids === undefined
+      ) {
+        if (
+          (wl_vaccine_types !== undefined &&
+            wl_vaccine_types.indexOf(session.vaccine) !== -1) ||
+          wl_vaccine_types === undefined
+        ) {
+          // TODO: add check for time range
+          // TODO: add check for whether enough slots available for all beneficiaries
+          clearInterval(mainInterval)
+          try {
+            await getBeneficiaries()
+          } catch (err) {
+            await getAndVerifyOTP()
+          }
+          await getRecaptcha()
+          let enteredRecaptcha = prompt()('Enter reCaptcha: ')
+          try {
+            await scheduleAppointment(
+              session.center_id,
+              session.session_id,
+              wl_beneficiaries ?? beneficiaries,
+              session.slots[session.slots.length - 1],
+              enteredRecaptcha
+            )
+            console.log(colors.green.bold('***APPOINTMENT(S) CONFIRMED***'))
+            process.exit(0)
+          } catch (err) {
+            console.log(colors.red.bold('***APPOINTMENT(S) BOOKING FAILED***'))
+          }
+          // TODO: output for who the appointment(s) were booked
+          // console.log(colors.green.bold("***APPOINTMENT(S) CONFIRMED FOR: " + (wl_beneficiaries !== undefined ? beneficiaries.map()) +"***"))
+        }
+      }
+      return true
+    })
+    inProgressScheduling = false
+    await startPollingForSlots(bookingEnabled, true)
+  }
+
+  if (channels.length > 0 && allOpenSessions.length > 0) {
     const embed = new MessageEmbed()
       .setTitle(
-        `**${all18PlusOpenSessions.length}** 18+ open sessions! - ` +
-          `*${all18PlusOpenSessions.reduce((tot, session) => {
-            return tot + session.available_capacity
-          }, 0)} slots*`
+        `**${allOpenSessions.reduce((tot, session) => {
+          return tot + session.available_capacity
+        }, 0)} slots** from ` +
+          `*${allOpenSessions.length}* open 18+ sessions! - `
       )
       .setColor(0x4fff7e)
       .setDescription(
         '```' +
-          all18PlusOpenSessions
+          allOpenSessions
             .map((session) => {
               return `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address}`
             })
             .join('\n') +
           '\n```'
       )
-    try {
-      await Promise.all(
-        channels.map((channel) =>
-          channel.send(
-            embed
-            // `**${all18PlusOpenSessions.length}** open sessions! - ` +
-            //   `*${all18PlusOpenSessions.reduce((tot, session) => {
-            //     return tot + session.available_capacity
-            //   }, 0)} slots*\n\`\`\`` +
-            //   all18PlusOpenSessions
-            //     .map((session) => {
-            //       return `${session.available_capacity} - ${session.vaccine}, ${session.name}: ${session.address}`
-            //     })
-            //     .join('\n') +
-            //   '\n```'
-          )
-        )
-      )
-    } catch (e) {}
+    if (
+      prevEmbed === undefined ||
+      prevEmbed.title !== embed.title ||
+      prevEmbed.description !== embed.description
+    ) {
+      try {
+        await Promise.all(channels.map((channel) => channel.send(embed)))
+      } catch (e) {
+        console.log(colors.red.italic(`Error sending some/all discord updates`))
+      }
+      prevEmbed = embed
+    }
   }
 }
 
@@ -254,28 +350,99 @@ const setupDiscordClient = () => {
   client.login(process.env.cowin_discord_bot_token)
 }
 
-;(async () => {
-  setupDiscordClient()
-
-  if (token === undefined || token === null) {
-    let otp = null
-    do {
-      if (otp !== null) {
-        console.log('Wait for 3 minutes to get a text')
-      }
-      await generateMobileOTP()
-      console.log(txnId)
-      otp = prompt()('Enter OTP: ')
-    } while (otp === 'resend')
-    await verifyOTP(otp)
+const printEnvConfig = () => {
+  console.log(`======Starting with the following configuration====`)
+  console.log(
+    `Discord Bot token: ${colors.magenta('%s')}`,
+    process.env.cowin_discord_bot_token
+  )
+  console.log(
+    `Phone Number: ${colors.magenta('%s')}`,
+    process.env.cowin_phone_number
+  )
+  console.log(
+    `District Number: ${colors.magenta('%s')}`,
+    process.env.cowin_district
+  )
+  if (process.env.cowin_whitelist_vaccine_types) {
+    console.log(
+      `Whitelisted Vaccine Types: ${colors.magenta('%s')}`,
+      JSON.stringify(process.env.cowin_whitelist_vaccine_types.split(','))
+    )
   }
-  console.log(token)
-  // await getBeneficiaries()
-  await getAppointmentSlots()
-  await parseCenters()
-  setInterval(async () => {
+  if (process.env.cowin_whitelist_center_ids) {
+    console.log(
+      `Whitelisted Centers: ${colors.magenta('%s')}`,
+      JSON.stringify(wl_center_ids)
+    )
+  }
+  if (process.env.cowin_whitelist_times) {
+    console.log(
+      `Whitelisted Times: ${colors.magenta('%s')}`,
+      process.env.cowin_whitelist_times.split('-')[0] +
+        ' to ' +
+        process.env.cowin_whitelist_times.split('-')[1]
+    )
+  }
+  if (process.env.cowin_whitelist_beneficiaries) {
+    console.log(
+      `Whitelisted Beneficiaries: ${colors.magenta('%s')}`,
+      JSON.stringify(process.env.cowin_whitelist_beneficiaries.split(','))
+    )
+  }
+  console.log(`======End of configuration====\n`)
+}
+
+const getAndVerifyOTP = async () => {
+  let otp = undefined
+  do {
+    if (otp !== undefined) {
+      console.log('Wait for up to 3 minutes to get a text and then try again')
+    }
+    await generateMobileOTP()
+    console.log(txnId)
+    let invalidOtp = true
+    do {
+      otp = prompt()('Enter OTP (type resend to send a new one): ')
+      try {
+        await verifyOTP(otp)
+        invalidOtp = false
+      } catch (err) {
+        console.log(err)
+      }
+    } while (invalidOtp)
+  } while (otp === 'resend')
+  console.log(`Token: ${colors.magenta('%s')}`, token)
+}
+
+const startPollingForSlots = async (
+  bookingEnabled: boolean,
+  skipInitial: boolean = false
+) => {
+  if (!skipInitial) {
     await getAppointmentSlots()
-    parseCenters()
-  }, 5000)
+    await parseCenters(bookingEnabled)
+  }
+  mainInterval = (setInterval(async () => {
+    await getAppointmentSlots()
+    parseCenters(bookingEnabled)
+  }, 5000) as unknown) as number
+}
+
+const runWorkflow = async (
+  printEnv: boolean = false,
+  setupDiscord: boolean = true,
+  bookingEnabled: boolean = false
+) => {
+  !printEnv || printEnvConfig()
+  !setupDiscord || setupDiscordClient()
+  try {
+    token = readFileSync('token.txt').toString()
+  } catch (err) {}
+  token ?? (await getAndVerifyOTP())
+  // await getBeneficiaries()
+  await startPollingForSlots(bookingEnabled)
   // await getRecaptcha()
-})()
+}
+
+runWorkflow(true, false)

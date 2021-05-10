@@ -6,10 +6,14 @@ Discord Notifier for India's CoWIN 18+ covid vaccine appointments
 
 ## Setup
 After cloning this repository, create a `.env` file in the repo with the following contents:
-```
-cowin_discord_bot_token=ENTER_DISCORD_BOT_TOKEN_HERE
-cowin_phone_number=ENTER_PHONE_NUMBER_HERE
-cowin_district=ENTER_DISTRICT_NUMBER_HERE
+```bash
+cowin_discord_bot_token=ENTER_DISCORD_BOT_TOKEN_HERE # for example AAAAAAAAAAAAAAAAAAAAAAAA.XXXXXX.YYYYYYYYYYYYYYYYYYYYYYYYYYY
+cowin_phone_number=ENTER_PHONE_NUMBER_HERE # for example 1234567890
+cowin_district=ENTER_DISTRICT_NUMBER_HERE # for example 389
+cowin_whitelist_vaccine_types=ENTER_TYPES_HERE # either COVISHIELD,COVAXIN or just COVISHIELD or COVAXIN
+cowin_whitelist_center_ids=ENTER_CENTER_IDS_HERE # either a single one like 594721 or multiple like 695512,695508,609123,561538,695505,569351
+cowin_whitelist_times=ENTER_TIMERANGE_HERE # for example 00:00-23:59 (in 24-hour format)
+cowin_whitelist_beneficiaries=ENTER_BENEFICIARIES_HERE # either a single one like 20123456789000 or multiple like 20123456789000,20123456789111,20123456789222
 ```
 
 Make sure to replace the right side with the appropriate information. After you create a discord bot, drop the bot's token in the first variable, then your phone number for a one-time authentication (and in the future, for scheduling appointments quickly), and finally the district number for the district you want to fetch vaccine information for (To find the district number, please follow the steps below)
