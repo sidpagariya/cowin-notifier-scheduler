@@ -445,4 +445,4 @@ const runWorkflow = async (
   // await getRecaptcha()
 }
 
-runWorkflow(true, false)
+runWorkflow(true)
