@@ -383,7 +383,7 @@ const sendDiscordNotifications = async (allFilteredOpenSessions: any[]) => {
           .map((session) => {
             return createSessionDiscordText(session)
           })
-          .join('\n\n') +
+          .join('\n\n\n') +
         '\n```'
     )
   if (
