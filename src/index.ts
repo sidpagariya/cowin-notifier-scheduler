@@ -505,7 +505,7 @@ const startPollingForSlots = async (
     // await parseCentersV2(bookingEnabled)
     await getAppointmentSlotsV1(bookingEnabled)
     await parseCentersV1(bookingEnabled)
-  }, 1000) as unknown as number
+  }, 5000) as unknown as number
   if (bookingEnabled) {
     setInterval(async () => {
       await getAndVerifyOTP()
