@@ -105,11 +105,7 @@ const getAppointmentSlotsV1 = async (bookingEnabled: boolean) => {
       )
     ).data.sessions
   } catch (err) {
-    console.log(
-      colors.red.italic(
-        `Error getting appointment slots: ${err.response.data.error}`
-      )
-    )
+    console.log(colors.red.italic(`Error getting appointment slots`))
   }
 }
 
@@ -350,10 +346,10 @@ const bookAppointment = async (
       }
       // TODO: output for who the appointment(s) were booked
       // console.log(colors.green.bold("***APPOINTMENT(S) CONFIRMED FOR: " + (wl_beneficiaries !== undefined ? beneficiaries.map()) +"***"))
+      await startPollingForSlots(bookingEnabled, true)
     }
   }
   inProgressScheduling = false
-  await startPollingForSlots(bookingEnabled, true)
 }
 
 const createSessionDiscordText = (session: any) => {
@@ -538,4 +534,4 @@ const runWorkflow = async (
   // await getRecaptcha()
 }
 
-runWorkflow(true, true, false)
+runWorkflow(true, false, true)
