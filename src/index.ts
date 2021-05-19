@@ -526,8 +526,17 @@ const runWorkflow = async (
     try {
       await getBeneficiaries()
     } catch (err) {
-      await getAndVerifyOTP()
-      await getBeneficiaries()
+      // await getAndVerifyOTP()
+      try {
+        await getBeneficiaries()
+      } catch (err) {
+        console.log(
+          colors.red(
+            'Error getting beneficiaries, most likely because there are none registered with this phone number'
+          )
+        )
+        throw "Couldn't fetch beneficiaries"
+      }
     }
   }
   await startPollingForSlots(bookingEnabled)
