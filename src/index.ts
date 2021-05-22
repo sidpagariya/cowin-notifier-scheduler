@@ -9,6 +9,8 @@ import sharp from 'sharp'
 import { readFileSync, writeFileSync } from 'fs'
 import { AEShelper, headers, URLS } from './constants'
 import { postRequest, getRequest } from './helpers'
+import compressedModel from '../model.json'
+import DOMParser from 'dom-parser'
 // import serverline from 'serverline'
 
 let mainInterval: number = 0
@@ -39,6 +41,9 @@ let wl_dose: number =
   process.env.cowin_whitelist_dose !== undefined
     ? parseInt(process.env.cowin_whitelist_dose)
     : 1
+
+const uncompressedModel = JSON.parse(atob(compressedModel.model))
+const domParser = new DOMParser()
 
 const generateMobileOTP = async () => {
   return (
@@ -153,11 +158,37 @@ const getRecaptcha = async () => {
       .flatten({ background: { r: 255, g: 255, b: 255 } })
       .toFile('captcha.png')
     console.log(await terminalImage.file('captcha.png', { height: 5 }))
+    console.log()
     return true
   } else {
     console.log("Didn't get proper captcha.")
     return false
   }
+}
+
+const parseCaptcha = (captcha: string) => {
+  let svg = domParser.parseFromString(captcha)
+  let paths = (svg.getElementsByTagName('path') ?? []).filter(
+    (p) => p.getAttribute('stroke') === null
+  )
+
+  let vals = paths.map((p) => {
+    return parseInt(p.getAttribute('d')!.split('.')[0].replace('M', ''))
+  })
+  let sorted = [...vals].sort(function (a, b) {
+    return a - b
+  })
+
+  let finalCaptcha: string[] = ['', '', '', '', '']
+
+  paths.forEach((path, idx) => {
+    finalCaptcha[sorted.indexOf(vals[idx])] =
+      uncompressedModel[
+        path.getAttribute('d')?.replace(/[\d\.\s]/g, '') as string
+      ]
+  })
+
+  return finalCaptcha.join('')
 }
 
 const scheduleAppointment = async (
@@ -325,7 +356,7 @@ const bookAppointment = async (
         await getAndVerifyOTP()
       }
       await getRecaptcha()
-      let enteredRecaptcha = prompt()('Enter reCaptcha: ')
+      let enteredRecaptcha = parseCaptcha(captcha!)
       try {
         await scheduleAppointment(
           session.center_id,
@@ -526,7 +557,7 @@ const runWorkflow = async (
     try {
       await getBeneficiaries()
     } catch (err) {
-      // await getAndVerifyOTP()
+      await getAndVerifyOTP()
       try {
         await getBeneficiaries()
       } catch (err) {
@@ -540,7 +571,6 @@ const runWorkflow = async (
     }
   }
   await startPollingForSlots(bookingEnabled)
-  // await getRecaptcha()
 }
 
 runWorkflow(true, false, true)

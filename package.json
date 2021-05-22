@@ -7,23 +7,26 @@
   "author": "Sid Pagariya <sidp@umich.edu>",
   "license": "MIT",
   "dependencies": {
-    "@types/sharp": "^0.28.0",
     "axios": "^0.21.1",
     "colors": "^1.4.0",
     "crypto-js": "^4.0.0",
     "discord.js": "^12.5.3",
+    "dom-parser": "^0.1.6",
     "dotenv": "^9.0.1",
     "moment": "^2.29.1",
     "prompt-sync": "^4.2.0",
     "serverline": "^1.5.0",
     "sharp": "^0.28.1",
+    "socks-proxy-agent": "^5.0.0",
     "svg2img": "^0.9.2",
     "terminal-image": "1.2.1"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.0.1",
+    "@types/dom-parser": "^0.1.1",
     "@types/node": "^15.0.2",
     "@types/prompt-sync": "^4.1.0",
+    "@types/sharp": "^0.28.1",
     "typescript": "^4.2.4"
   }
 }

@@ -8,6 +8,7 @@
     "alwaysStrict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
   },
   "include": ["*.ts", "src/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]
