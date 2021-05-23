@@ -1,7 +1,10 @@
-# CoWIN Discord Notifier
-Discord Notifier for India's CoWIN 18+ covid vaccine appointments
+# CoWIN Discord Notifier and Scheduler
+Discord Notifier for India's CoWIN 18+/45+ covid vaccine appointments
+
+Also features a fully automated appointment booking workflow
 
 ![demo-screenshot](cowin-screenshot.png "Demo Screenshot")
+![automated-booking](automated-booking.png "Automated Booking Demo")
 
 
 ## Setup
