@@ -18,7 +18,6 @@ import path from 'path'
 let mainInterval: number = 0
 let inProgressScheduling: boolean = false
 let mobile = process.env.cowin_phone_number
-// let txnId: string | undefined = undefined
 let mainToken: string | undefined = undefined
 let beneficiaries: any = undefined
 let centers: any[] = []
@@ -613,8 +612,8 @@ const runWorkflow = async (
   await startPollingForSlots(bookingEnabled, false, automatedOtp)
 }
 
-// The first boolean:   is to print your environment variables out
-// The second boolean:  is to enable discord notifications to all channels your bot is present in
-// The third boolean:   is to enable the booking workflow
-// The fourth boolean:  is to enable the automated OTP workflow with the IFTTT integration mentioned in the README
+// The first boolean is to:   print the relevant environment variables out
+// The second boolean is to:  enable discord notifications to all channels your bot is present in
+// The third boolean is to:   enable the booking workflow
+// The fourth boolean is to:  enable the automated OTP workflow with the IFTTT integration mentioned in the README
 runWorkflow(true, false, false, false)
