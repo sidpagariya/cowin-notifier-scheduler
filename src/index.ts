@@ -11,6 +11,8 @@ import { AEShelper, headers, URLS } from './constants'
 import { postRequest, getRequest } from './helpers'
 import compressedModel from '../model.json'
 import DOMParser from 'dom-parser'
+import { ChildProcess, fork } from 'child_process'
+import path from 'path'
 // import serverline from 'serverline'
 
 let mainInterval: number = 0
@@ -46,6 +48,7 @@ const uncompressedModel = JSON.parse(
   Buffer.from(compressedModel.model, 'base64').toString()
 )
 const domParser = new DOMParser()
+let childProcess: ChildProcess
 
 const generateMobileOTP = async () => {
   return (
@@ -519,9 +522,16 @@ const getAndVerifyOTP = async () => {
   console.log(`Token: ${colors.magenta('%s')}`, mainToken)
 }
 
+const getAsyncOTP = async () => {
+  let txnId = await generateMobileOTP()
+  console.log(`Requested new async OTP with txnId ${txnId}`)
+  childProcess.send({ txnId: txnId })
+}
+
 const startPollingForSlots = async (
   bookingEnabled: boolean,
-  skipInitial: boolean = false
+  skipInitial: boolean = false,
+  automatedOtp: boolean = false
 ) => {
   if (!skipInitial) {
     // await getAppointmentSlotsV2(bookingEnabled)
@@ -536,16 +546,23 @@ const startPollingForSlots = async (
     await parseCentersV1(bookingEnabled)
   }, 5000) as unknown as number
   if (bookingEnabled) {
-    setInterval(async () => {
-      await getAndVerifyOTP()
-    }, 10 * 60000)
+    if (automatedOtp) {
+      setInterval(async () => {
+        await getAsyncOTP()
+      }, 5 * 60000)
+    } else {
+      setInterval(async () => {
+        await getAndVerifyOTP()
+      }, 10 * 60000)
+    }
   }
 }
 
 const runWorkflow = async (
   printEnv: boolean = false,
   setupDiscord: boolean = true,
-  bookingEnabled: boolean = false
+  bookingEnabled: boolean = false,
+  automatedOtp: boolean = false
 ) => {
   !printEnv || printEnvConfig()
   !setupDiscord || setupDiscordClient()
@@ -572,10 +589,32 @@ const runWorkflow = async (
       }
     }
   }
-  await startPollingForSlots(bookingEnabled)
+
+  if (automatedOtp) {
+    childProcess = fork(path.resolve(__dirname, './server.ts'))
+    childProcess.on('message', async (message: any) => {
+      console.log(
+        `Received OTP in main thread: ${message.receivedOTP} with txnId ${message.currentTxnId}`
+      )
+      try {
+        mainToken = await verifyOTP(
+          message.receivedOTP.toString(),
+          message.currentTxnId
+        )
+        console.log(colors.green('Successfully verified async OTP!'))
+        console.log(`Token: ${colors.magenta('%s')}`, mainToken)
+      } catch (err) {
+        console.log(err)
+        console.log(colors.red('Failed to verify async OTP!'))
+      }
+    })
+  }
+
+  await startPollingForSlots(bookingEnabled, false, automatedOtp)
 }
 
-// The first boolean is to print your environment variables out
-// The second boolean is to enable discord notifications to all channels your bot is present in
-// The third boolean is to enable the booking workflow
-runWorkflow(true, false, true)
+// The first boolean:   is to print your environment variables out
+// The second boolean:  is to enable discord notifications to all channels your bot is present in
+// The third boolean:   is to enable the booking workflow
+// The fourth boolean:  is to enable the automated OTP workflow with the IFTTT integration mentioned in the README
+runWorkflow(true, false, false, false)
