@@ -20,11 +20,15 @@ cowin_whitelist_dose=ENTER_DOSE_NUMBER_HERE # either 1 or 2, whichever dose # yo
 
 Make sure to replace the right side with the appropriate information. After you create a discord bot, drop the bot's token in the first variable, then your phone number for a one-time authentication (and in the future, for scheduling appointments quickly), and finally the district number for the district you want to fetch vaccine information for (To find the district number, please follow the steps below)
 
-### How to find your state and then district number
+### How to find your State and then District Number
 1. Visit https://cdn-api.co-vin.in/api/v2/admin/location/states to find your state and the `state_id` corresponding it (For example, for Maharashtra, it is `21`)
 2. Now, take your state number and append it at the end of the following URL: https://cdn-api.co-vin.in/api/v2/admin/location/districts/ (For example, for Maharashtra, it will be https://cdn-api.co-vin.in/api/v2/admin/location/districts/21).
 3. Visit this new url to find out the `district_id` corresponding to your district to get the district number (for example, for the Nashik district in Maharashtra, it is 389).
 
+### How to find Center IDs
+1. First follow the above steps to find your district number.
+2. Then visit https://cdn-api.co-vin.in/api/v2/appointment/sessions/calendarByDistrict?district_id=DISTRICT_NUMBER&date=DD-MM-YYYY where `DISTRICT_NUMBER` is what you determined above and DD-MM-YYYY is the current date in that particular format.
+3. 
 ### Install dependencies
 Install all dependencies with the following command (using yarn) in the repo folder:
 ```
@@ -36,5 +40,5 @@ Make sure you also have `ts-node` installed, otherwise use either yarn (`yarn ad
 ## Running the application
 Run the application with the following command:
 ```
-ts-node index.ts
+ts-node src/index.ts
 ```

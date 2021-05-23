@@ -42,7 +42,9 @@ let wl_dose: number =
     ? parseInt(process.env.cowin_whitelist_dose)
     : 1
 
-const uncompressedModel = JSON.parse(atob(compressedModel.model))
+const uncompressedModel = JSON.parse(
+  Buffer.from(compressedModel.model, 'base64').toString()
+)
 const domParser = new DOMParser()
 
 const generateMobileOTP = async () => {
@@ -573,4 +575,7 @@ const runWorkflow = async (
   await startPollingForSlots(bookingEnabled)
 }
 
+// The first boolean is to print your environment variables out
+// The second boolean is to enable discord notifications to all channels your bot is present in
+// The third boolean is to enable the booking workflow
 runWorkflow(true, false, true)
