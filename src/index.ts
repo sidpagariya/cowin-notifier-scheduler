@@ -101,20 +101,16 @@ const getAppointmentSlotsV1 = async (bookingEnabled: boolean) => {
   try {
     sessions = (
       await getRequest(
-        bookingEnabled
-          ? URLS.FIND_SESSIONS(
-              parseInt(process.env.cowin_district as string),
-              date.format('DD-MM-YYYY')
-            )
-          : URLS.PUBLIC_FIND_SESSIONS(
-              parseInt(process.env.cowin_district as string),
-              date.format('DD-MM-YYYY')
-            ),
+        URLS.PUBLIC_FIND_SESSIONS(
+          parseInt(process.env.cowin_district as string),
+          date.format('DD-MM-YYYY')
+        ),
         bookingEnabled ? mainToken : undefined
       )
     ).data.sessions
   } catch (err) {
     console.log(colors.red.italic(`Error getting appointment slots`))
+    // console.log(err)
   }
 }
 
@@ -127,25 +123,16 @@ const getAppointmentSlotsV2 = async (bookingEnabled: boolean) => {
   try {
     centers = (
       await getRequest(
-        bookingEnabled
-          ? URLS.CALENDAR(
-              parseInt(process.env.cowin_district as string),
-              date.format('DD-MM-YYYY')
-            )
-          : URLS.PUBLIC_CALENDAR(
-              parseInt(process.env.cowin_district as string),
-              date.format('DD-MM-YYYY')
-            ),
+        URLS.PUBLIC_CALENDAR(
+          parseInt(process.env.cowin_district as string),
+          date.format('DD-MM-YYYY')
+        ),
         bookingEnabled ? mainToken : undefined
       )
     ).data.centers
   } catch (err) {
-    console.log(
-      colors.red.italic(
-        `Error getting appointment slots: ${err.response.data.error}`
-      )
-    )
-    console.log(err)
+    console.log(colors.red.italic(`Error getting appointment slots`))
+    // console.log(err)
   }
 }
 
